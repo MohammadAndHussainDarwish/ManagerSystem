@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>متجر الزيوت المعدنية</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">لوحة التحكم</p>
+          <h1>متجر الزيوت المعدنية</h1>
+        </div>
+        <div class="topbar-actions">
+          <button id="resetBtn" class="secondary-btn" type="button">
+            <span>صفر البيانات</span>
+          </button>
+          <button id="exportBtn" class="primary-btn">
+            <span>تصدير Excel</span>
+          </button>
+        </div>
+      </header>
+
+      <section class="stats-grid">
+        <div class="stat-card accent">
+          <label>إجمالي المبيعات اليوم</label>
+          <strong id="todaySalesTotal">0 ل.س</strong>
+        </div>
+        <div class="stat-card success">
+          <label>إجمالي الربح اليوم</label>
+          <strong id="todayProfitTotal">0 ل.س</strong>
+        </div>
+        <div class="stat-card info">
+          <label>المستحقات الحالية</label>
+          <strong id="receivablesTotal">0 ل.س</strong>
+        </div>
+        <div class="stat-card warning">
+          <label>إجمالي المدفوعات</label>
+          <strong id="todayPaymentsTotal">0 ل.س</strong>
+        </div>
+      </section>
+
+      <main class="dashboard-grid">
+        <section class="panel" id="oilPanel">
+          <div class="section-header">
+            <h2>إدارة الزيوت</h2>
+          </div>
+
+          <form id="oilForm" class="form-grid compact-form">
+            <div class="field">
+              <label>اسم الزيت</label>
+              <input type="text" id="oilName" placeholder="مثال: زيت نحاس" required />
+            </div>
+            <div class="field">
+              <label>نوع البيع</label>
+              <select id="oilSaleType" required>
+                <option value="kilo">يباع بالكيلو</option>
+                <option value="box">يباع بالعلبة المختومة</option>
+              </select>
+            </div>
+            <div class="field">
+              <label id="oilStockLabel">الكمية الأولية / الكيلو</label>
+              <input type="number" id="oilStock" step="0.1" min="0" placeholder="0.0" required />
+            </div>
+            <div class="field" id="boxVolumeField" style="display: none;">
+              <label>محتوى العلبة / لتر</label>
+              <input type="number" id="oilBoxVolume" step="0.1" min="0" placeholder="20" />
+            </div>
+            <div class="field">
+              <label id="oilBuyPriceLabel">سعر الشراء / الكيلو</label>
+              <input type="number" id="oilBuyPrice" step="0.01" min="0" placeholder="0.00" required />
+            </div>
+            <div class="field">
+              <label id="oilSellPriceLabel">سعر البيع / الكيلو</label>
+              <input type="number" id="oilSellPrice" step="0.01" min="0" placeholder="0.00" required />
+            </div>
+            <button type="submit" class="primary-btn block-btn">إضافة الزيت</button>
+          </form>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>الاسم</th>
+                  <th>شراء</th>
+                  <th>بيع</th>
+                  <th>الربح</th>
+                  <th>المخزون</th>
+                  <th>الحالة</th>
+                  <th>حذف</th>
+                </tr>
+              </thead>
+              <tbody id="oilTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel" id="salePanel">
+          <div class="section-header">
+            <h2>فاتورة البيع</h2>
+          </div>
+
+          <form id="saleForm" class="form-grid">
+            <div class="field">
+              <label>اسم الزبون</label>
+              <input type="text" id="customerName" list="customerNameList" placeholder="أدخل اسم الزبون أو اختَر قديم" required />
+              <datalist id="customerNameList"></datalist>
+            </div>
+            <div class="field">
+              <label>نوع الزيت</label>
+              <select id="oilSelect" required></select>
+            </div>
+            <div class="field">
+              <label id="saleQuantityLabel">الكمية بالكيلو</label>
+              <input type="number" id="quantity" step="0.1" min="0.1" value="1" required />
+            </div>
+            <div class="field">
+              <label>المدفوع</label>
+              <input type="number" id="amountPaid" step="0.01" min="0" value="0" />
+            </div>
+            <div class="field full-span">
+              <label>التاريخ</label>
+              <input type="date" id="saleDate" />
+            </div>
+            <button type="submit" class="primary-btn block-btn">حفظ البيع</button>
+          </form>
+
+          <div id="invoiceBox" class="invoice-box">
+            <div class="invoice-head">
+              <h3>الفاتورة</h3>
+              <span id="invoiceType">مستعدة</span>
+            </div>
+            <div class="invoice-row">
+              <span>اسم الزبون</span>
+              <strong id="invoiceCustomer">-</strong>
+            </div>
+            <div class="invoice-row">
+              <span>نوع الزيت</span>
+              <strong id="invoiceOil">-</strong>
+            </div>
+            <div class="invoice-row">
+              <span>الكمية</span>
+              <strong id="invoiceQuantity">0</strong>
+            </div>
+            <div class="invoice-row">
+              <span>سعر الشراء</span>
+              <strong id="invoicePurchasePrice">0 ل.س</strong>
+            </div>
+            <div class="invoice-row">
+              <span>سعر البيع</span>
+              <strong id="invoiceSellPrice">0 ل.س</strong>
+            </div>
+            <div class="invoice-row total-row">
+              <span>إجمالي البيع</span>
+              <strong id="invoiceTotalSale">0 ل.س</strong>
+            </div>
+            <div class="invoice-row total-row total-cost">
+              <span>إجمالي الشراء</span>
+              <strong id="invoiceTotalPurchase">0 ل.س</strong>
+            </div>
+            <div class="invoice-row profit-row">
+              <span>الفرق</span>
+              <strong id="invoiceProfit">0 ل.س</strong>
+            </div>
+            <div class="invoice-row">
+              <span>المدفوع</span>
+              <strong id="invoicePaid">0 ل.س</strong>
+            </div>
+            <div class="invoice-row">
+              <span>الباقي</span>
+              <strong id="invoiceRemaining">0 ل.س</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" id="paymentPanel">
+          <div class="section-header">
+            <h2>تسجيل دفعة</h2>
+          </div>
+
+          <form id="paymentForm" class="form-grid compact-form">
+            <div class="field">
+              <label>اسم الزبون</label>
+              <select id="paymentCustomerSelect" required></select>
+            </div>
+            <div class="field">
+              <label>المبلغ المدفوع</label>
+              <input type="number" id="paymentAmount" step="0.01" min="0" placeholder="0.00" required />
+            </div>
+            <div class="field full-span">
+              <label>ملاحظات</label>
+              <input type="text" id="paymentNote" placeholder="مثال: دفعة جزئية" />
+            </div>
+            <div class="field full-span">
+              <label>التاريخ</label>
+              <input type="date" id="paymentDate" />
+            </div>
+            <button type="submit" class="primary-btn block-btn">تسجيل الدفعة</button>
+          </form>
+        </section>
+
+        <section class="panel wide-panel" id="ledgerPanel">
+          <div class="section-header">
+            <h2>سجل الزبائن</h2>
+          </div>
+
+          <div id="ledgerList" class="ledger-list"></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
