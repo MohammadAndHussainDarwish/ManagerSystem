@@ -2,9 +2,9 @@ const STORAGE_KEY = 'metal_oils_store_v1';
 
 const defaultState = {
   oils: [
-    { id: crypto.randomUUID(), name: 'زيت نحاس', buyPrice: 18, sellPrice: 25, stock: 0, saleType: 'kilo', boxVolumeLiters: 0 },
-    { id: crypto.randomUUID(), name: 'زيت ألومنيوم', buyPrice: 22, sellPrice: 30, stock: 0, saleType: 'kilo', boxVolumeLiters: 0 },
-    { id: crypto.randomUUID(), name: 'زيت زنك', buyPrice: 26, sellPrice: 35, stock: 0, saleType: 'kilo', boxVolumeLiters: 0 }
+    { id: crypto.randomUUID(), name: 'زيت نحاس', buyPrice: 18, sellPrice: 25, stock: 0, saleType: 'kilo', boxVolumeLiters: 0, currency: 'SYP' },
+    { id: crypto.randomUUID(), name: 'زيت ألومنيوم', buyPrice: 22, sellPrice: 30, stock: 0, saleType: 'kilo', boxVolumeLiters: 0, currency: 'SYP' },
+    { id: crypto.randomUUID(), name: 'زيت زنك', buyPrice: 26, sellPrice: 35, stock: 0, saleType: 'kilo', boxVolumeLiters: 0, currency: 'SYP' }
   ],
   sales: [],
   payments: []
@@ -15,6 +15,7 @@ let state = loadState();
 const oilForm = document.getElementById('oilForm');
 const oilNameInput = document.getElementById('oilName');
 const oilSaleTypeSelect = document.getElementById('oilSaleType');
+const oilCurrencySelect = document.getElementById('oilCurrency');
 const oilStockInput = document.getElementById('oilStock');
 const oilBoxVolumeInput = document.getElementById('oilBoxVolume');
 const oilBuyPriceInput = document.getElementById('oilBuyPrice');
@@ -31,11 +32,13 @@ const oilSelect = document.getElementById('oilSelect');
 const quantityInput = document.getElementById('quantity');
 const saleQuantityLabel = document.getElementById('saleQuantityLabel');
 const amountPaidInput = document.getElementById('amountPaid');
+const salePaidLabel = document.getElementById('salePaidLabel');
 const saleDateInput = document.getElementById('saleDate');
 
 const paymentForm = document.getElementById('paymentForm');
 const paymentCustomerSelect = document.getElementById('paymentCustomerSelect');
 const paymentAmountInput = document.getElementById('paymentAmount');
+const paymentCurrencySelect = document.getElementById('paymentCurrency');
 const paymentNoteInput = document.getElementById('paymentNote');
 const paymentDateInput = document.getElementById('paymentDate');
 
@@ -57,7 +60,13 @@ const invoiceEls = {
   remaining: document.getElementById('invoiceRemaining')
 };
 
-const money = (value) => `${Number(value || 0).toLocaleString('ar-SA', { maximumFractionDigits: 2 })} ل.س`;
+const currencies = ['SYP', 'USD'];
+const getCurrency = (currency) => currency === 'USD' ? 'USD' : 'SYP';
+const currencyName = (currency) => getCurrency(currency) === 'USD' ? 'دولار أمريكي' : 'ليرة سورية';
+const money = (value, currency = 'SYP') => {
+  const symbol = getCurrency(currency) === 'USD' ? '$' : 'ل.س';
+  return `${Number(value || 0).toLocaleString('ar-SA', { maximumFractionDigits: 2 })} ${symbol}`;
+};
 const kilograms = (value) => `${Number(value || 0).toLocaleString('ar-SA', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} كيلو`;
 const liters = (value) => `${Number(value || 0).toLocaleString('ar-SA', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} لتر`;
 const dateString = (dateValue) => {
@@ -86,14 +95,15 @@ function loadState() {
     const oils = (Array.isArray(parsed.oils) && parsed.oils.length ? parsed.oils : structuredClone(defaultState.oils)).map((oil) => ({
       ...oil,
       saleType: oil.saleType || 'kilo',
+      currency: getCurrency(oil.currency),
       stock: Number(oil.stock || 0),
       boxVolumeLiters: Number(oil.boxVolumeLiters || 0)
     }));
 
     return {
       oils,
-      sales: Array.isArray(parsed.sales) ? parsed.sales : [],
-      payments: Array.isArray(parsed.payments) ? parsed.payments : []
+      sales: Array.isArray(parsed.sales) ? parsed.sales.map((sale) => ({ ...sale, currency: getCurrency(sale.currency) })) : [],
+      payments: Array.isArray(parsed.payments) ? parsed.payments.map((payment) => ({ ...payment, currency: getCurrency(payment.currency) })) : []
     };
   } catch (error) {
     return structuredClone(defaultState);
@@ -112,6 +122,26 @@ function getOilMargin(oil) {
   return Number((oil.sellPrice - oil.buyPrice).toFixed(2));
 }
 
+function sumByCurrency(records, amountKey) {
+  return currencies.reduce((totals, currency) => {
+    totals[currency] = records
+      .filter((record) => getCurrency(record.currency) === currency)
+      .reduce((sum, record) => sum + Number(record[amountKey] || 0), 0);
+    return totals;
+  }, {});
+}
+
+function getCustomerBalance(customerName, currency) {
+  const salesTotal = state.sales
+    .filter((sale) => sale.customerName === customerName && getCurrency(sale.currency) === currency)
+    .reduce((sum, sale) => sum + Number(sale.totalSale || 0), 0);
+  const paymentsTotal = state.payments
+    .filter((payment) => payment.customerName === customerName && getCurrency(payment.currency) === currency)
+    .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+
+  return salesTotal - paymentsTotal;
+}
+
 function getCustomerNames() {
   return Array.from(new Set([
     ...state.sales.map((sale) => sale.customerName),
@@ -124,7 +154,7 @@ function renderOilOptions() {
     state.oils.map((oil) => {
       const stockStatus = getStockStatus(oil);
       const stockLabel = stockStatus.className === 'low-stock' ? ' (منخفض)' : '';
-      return `<option value="${oil.id}">${oil.name}${stockLabel}</option>`;
+      return `<option value="${oil.id}">${oil.name} · ${currencyName(oil.currency)}${stockLabel}</option>`;
     }).join('');
 
   const customerNames = getCustomerNames();
@@ -139,7 +169,7 @@ function renderOilOptions() {
 
 function renderOilTable() {
   if (!state.oils.length) {
-    oilTableBody.innerHTML = '<tr><td colspan="7">لا توجد أصناف مضافة</td></tr>';
+    oilTableBody.innerHTML = '<tr><td colspan="8">لا توجد أصناف مضافة</td></tr>';
     return;
   }
 
@@ -153,9 +183,10 @@ function renderOilTable() {
     return `
       <tr>
         <td>${oil.name}</td>
-        <td>${money(oil.buyPrice)}</td>
-        <td>${money(oil.sellPrice)}</td>
-        <td><span class="amount-pill ${badgeClass}">${money(margin)}</span></td>
+        <td>${currencyName(oil.currency)}</td>
+        <td>${money(oil.buyPrice, oil.currency)}</td>
+        <td>${money(oil.sellPrice, oil.currency)}</td>
+        <td><span class="amount-pill ${badgeClass}">${money(margin, oil.currency)}</span></td>
         <td>${stockText}</td>
         <td><span class="amount-pill ${stockStatus.className}">${stockStatus.label}</span></td>
         <td><button class="delete-btn" data-oil-id="${oil.id}">حذف</button></td>
@@ -207,20 +238,22 @@ function renderInvoice() {
 
   const selectedOil = getOilById(oilId);
   if (!selectedOil) {
+    const currentCurrency = 'SYP';
     invoiceEls.customer.textContent = '-';
     invoiceEls.oil.textContent = '-';
     invoiceEls.quantity.textContent = '0';
-    invoiceEls.purchasePrice.textContent = '0 ل.س';
-    invoiceEls.sellPrice.textContent = '0 ل.س';
-    invoiceEls.totalSale.textContent = '0 ل.س';
-    invoiceEls.totalPurchase.textContent = '0 ل.س';
-    invoiceEls.profit.textContent = '0 ل.س';
-    invoiceEls.paid.textContent = '0 ل.س';
-    invoiceEls.remaining.textContent = '0 ل.س';
+    invoiceEls.purchasePrice.textContent = money(0, currentCurrency);
+    invoiceEls.sellPrice.textContent = money(0, currentCurrency);
+    invoiceEls.totalSale.textContent = money(0, currentCurrency);
+    invoiceEls.totalPurchase.textContent = money(0, currentCurrency);
+    invoiceEls.profit.textContent = money(0, currentCurrency);
+    invoiceEls.paid.textContent = money(0, currentCurrency);
+    invoiceEls.remaining.textContent = money(0, currentCurrency);
+    salePaidLabel.textContent = `المدفوع (${currencyName(currentCurrency)})`;
     return;
   }
 
-  const unitLabel = selectedOil.saleType === 'box' ? 'علبة' : 'كيلو';
+  const currency = getCurrency(selectedOil.currency);
   const totalQuantity = selectedOil.saleType === 'box' ? quantity * Number(selectedOil.boxVolumeLiters || 0) : quantity;
   const saleTotal = selectedOil.sellPrice * quantity;
   const purchaseTotal = selectedOil.buyPrice * quantity;
@@ -232,21 +265,22 @@ function renderInvoice() {
   invoiceEls.quantity.textContent = selectedOil.saleType === 'box'
     ? `${quantity} علبة (${liters(totalQuantity)})`
     : `${quantity} كيلو`;
-  invoiceEls.purchasePrice.textContent = money(selectedOil.buyPrice);
-  invoiceEls.sellPrice.textContent = money(selectedOil.sellPrice);
-  invoiceEls.totalSale.textContent = money(saleTotal);
-  invoiceEls.totalPurchase.textContent = money(purchaseTotal);
-  invoiceEls.paid.textContent = money(paid);
-  invoiceEls.remaining.textContent = money(remaining);
+  invoiceEls.purchasePrice.textContent = money(selectedOil.buyPrice, currency);
+  invoiceEls.sellPrice.textContent = money(selectedOil.sellPrice, currency);
+  invoiceEls.totalSale.textContent = money(saleTotal, currency);
+  invoiceEls.totalPurchase.textContent = money(purchaseTotal, currency);
+  invoiceEls.paid.textContent = money(paid, currency);
+  invoiceEls.remaining.textContent = money(remaining, currency);
+  salePaidLabel.textContent = `المدفوع (${currencyName(currency)})`;
 
   const profitEl = document.getElementById('invoiceProfit');
-  profitEl.textContent = money(profit);
+  profitEl.textContent = money(profit, currency);
   profitEl.classList.toggle('profit-positive', profit >= 0);
   profitEl.classList.toggle('profit-negative', profit < 0);
 
   if (selectedOil.saleType === 'box') {
-    invoiceEls.purchasePrice.textContent = `${money(selectedOil.buyPrice)} / علبة`;
-    invoiceEls.sellPrice.textContent = `${money(selectedOil.sellPrice)} / علبة`;
+    invoiceEls.purchasePrice.textContent = `${money(selectedOil.buyPrice, currency)} / علبة`;
+    invoiceEls.sellPrice.textContent = `${money(selectedOil.sellPrice, currency)} / علبة`;
   }
 }
 
@@ -255,34 +289,26 @@ function renderStats() {
   const todayString = today.toISOString().slice(0, 10);
 
   const todaySales = state.sales.filter((sale) => sale.date === todayString);
-  const todayPayments = state.payments.filter((payment) => payment.date === todayString);
 
-  const salesTotal = todaySales.reduce((sum, sale) => sum + Number(sale.totalSale || 0), 0);
-  const totalPayments = state.payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
-  const profitTotal = todaySales.reduce((sum, sale) => sum + Number(sale.profit || 0), 0);
+  const salesTotals = sumByCurrency(todaySales, 'totalSale');
+  const profitTotals = sumByCurrency(todaySales, 'profit');
+  const paymentTotals = sumByCurrency(state.payments, 'amount');
+  const customerNames = getCustomerNames();
+  const receivables = currencies.reduce((totals, currency) => {
+    totals[currency] = customerNames.reduce((sum, customerName) => {
+      return sum + Math.max(getCustomerBalance(customerName, currency), 0);
+    }, 0);
+    return totals;
+  }, {});
 
-  const customerBalances = {};
-
-  state.sales.forEach((sale) => {
-    if (!customerBalances[sale.customerName]) {
-      customerBalances[sale.customerName] = 0;
-    }
-    customerBalances[sale.customerName] += Number(sale.totalSale || 0);
-  });
-
-  state.payments.forEach((payment) => {
-    if (!customerBalances[payment.customerName]) {
-      customerBalances[payment.customerName] = 0;
-    }
-    customerBalances[payment.customerName] -= Number(payment.amount || 0);
-  });
-
-  const totalReceivables = Object.values(customerBalances).reduce((sum, value) => sum + Math.max(value, 0), 0);
-
-  document.getElementById('todaySalesTotal').textContent = money(salesTotal);
-  document.getElementById('todayProfitTotal').textContent = money(profitTotal);
-  document.getElementById('receivablesTotal').textContent = money(totalReceivables);
-  document.getElementById('todayPaymentsTotal').textContent = money(totalPayments);
+  document.getElementById('todaySalesSyp').textContent = money(salesTotals.SYP, 'SYP');
+  document.getElementById('todaySalesUsd').textContent = money(salesTotals.USD, 'USD');
+  document.getElementById('todayProfitSyp').textContent = money(profitTotals.SYP, 'SYP');
+  document.getElementById('todayProfitUsd').textContent = money(profitTotals.USD, 'USD');
+  document.getElementById('receivablesSyp').textContent = money(receivables.SYP, 'SYP');
+  document.getElementById('receivablesUsd').textContent = money(receivables.USD, 'USD');
+  document.getElementById('paymentsSyp').textContent = money(paymentTotals.SYP, 'SYP');
+  document.getElementById('paymentsUsd').textContent = money(paymentTotals.USD, 'USD');
 }
 
 function renderLedger() {
@@ -296,9 +322,21 @@ function renderLedger() {
   const customerCards = customerNames.map((customerName) => {
     const customerSales = state.sales.filter((sale) => sale.customerName === customerName);
     const customerPayments = state.payments.filter((payment) => payment.customerName === customerName);
-    const totalPurchased = customerSales.reduce((sum, sale) => sum + Number(sale.totalSale || 0), 0);
-    const totalPaid = customerPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
-    const remaining = Math.max(totalPurchased - totalPaid, 0);
+    const salesByCurrency = sumByCurrency(customerSales, 'totalSale');
+    const paymentsByCurrency = sumByCurrency(customerPayments, 'amount');
+    const balancesByCurrency = currencies.reduce((balances, currency) => {
+      balances[currency] = salesByCurrency[currency] - paymentsByCurrency[currency];
+      return balances;
+    }, {});
+    const hasOutstandingBalance = currencies.some((currency) => balancesByCurrency[currency] > 0);
+    const hasCreditBalance = currencies.some((currency) => balancesByCurrency[currency] < 0);
+    const statusLabel = hasOutstandingBalance && hasCreditBalance
+      ? 'له باقٍ ورصيد دائن'
+      : hasOutstandingBalance
+        ? 'له باقٍ'
+        : hasCreditBalance
+          ? 'له رصيد دائن'
+          : 'مسدد';
     const lastPayment = customerPayments.length
       ? customerPayments.reduce((latest, payment) => new Date(payment.date) > new Date(latest.date) ? payment : latest)
       : null;
@@ -308,14 +346,16 @@ function renderLedger() {
 
     const history = [...customerSales.map((sale) => ({
       type: 'purchase',
-      label: `${sale.oilName} · ${sale.quantity} كيلو`,
+      label: `${sale.oilName} · ${sale.quantity} ${sale.saleType === 'box' ? 'علبة' : 'كيلو'}`,
       amount: sale.totalSale,
+      currency: getCurrency(sale.currency),
       date: sale.date,
       note: 'فاتورة بيع'
     })), ...customerPayments.map((payment) => ({
       type: 'payment',
       label: payment.note || 'دفعة',
       amount: payment.amount,
+      currency: getCurrency(payment.currency),
       date: payment.date,
       note: 'دفعة مسجلة'
     }))].sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -328,7 +368,7 @@ function renderLedger() {
               <small>${entry.note} · ${dateString(entry.date)}</small>
             </div>
             <span class="${entry.type === 'purchase' ? 'amount-debit' : 'amount-credit'}">
-              ${entry.type === 'purchase' ? '-' : '+'}${money(entry.amount)}
+              ${entry.type === 'purchase' ? '-' : '+'}${money(entry.amount, entry.currency)}
             </span>
           </li>
         `).join('')
@@ -338,27 +378,32 @@ function renderLedger() {
       <div class="customer-card">
         <div class="customer-header">
           <h3>${customerName}</h3>
-          <span class="${remaining > 0 ? 'status-pill neutral' : 'status-pill profit'}">
-            ${remaining > 0 ? 'له باقٍ' : 'مسدد'}
+          <span class="status-pill ${hasOutstandingBalance ? 'neutral' : 'profit'}">
+            ${statusLabel}
           </span>
         </div>
         <div class="customer-summary">
-          <div class="summary-box">
-            <span>المشتريات</span>
-            <strong>${money(totalPurchased)}</strong>
-          </div>
-          <div class="summary-box">
-            <span>المدفوع</span>
-            <strong>${money(totalPaid)}</strong>
-          </div>
-          <div class="summary-box">
-            <span>الباقي</span>
-            <strong>${money(remaining)}</strong>
-          </div>
+          ${currencies.map((currency) => `
+            <div class="currency-summary">
+              <h4>${currencyName(currency)}</h4>
+              <div class="summary-box">
+                <span>المشتريات</span>
+                <strong>${money(salesByCurrency[currency], currency)}</strong>
+              </div>
+              <div class="summary-box">
+                <span>المدفوع</span>
+                <strong>${money(paymentsByCurrency[currency], currency)}</strong>
+              </div>
+              <div class="summary-box">
+                <span>الرصيد</span>
+                <strong>${money(balancesByCurrency[currency], currency)}</strong>
+              </div>
+            </div>
+          `).join('')}
         </div>
         <div class="customer-footer">
           <small>آخر شراء: ${lastPurchase ? `${lastPurchase.oilName} · ${dateString(lastPurchase.date)}` : 'لا توجد'}</small>
-          <small>آخر دفعة: ${lastPayment ? `${money(lastPayment.amount)} · ${dateString(lastPayment.date)}` : 'لا توجد'}</small>
+          <small>آخر دفعة: ${lastPayment ? `${money(lastPayment.amount, lastPayment.currency)} · ${dateString(lastPayment.date)}` : 'لا توجد'}</small>
         </div>
         <ul class="history-list">${historyMarkup}</ul>
       </div>
@@ -398,6 +443,7 @@ oilForm.addEventListener('submit', (event) => {
   const boxVolumeLiters = Number(oilBoxVolumeInput.value || 0);
   const buyPrice = Number(oilBuyPriceInput.value);
   const sellPrice = Number(oilSellPriceInput.value);
+  const currency = getCurrency(oilCurrencySelect.value);
 
   if (saleType === 'box' && (Number.isNaN(boxVolumeLiters) || boxVolumeLiters <= 0)) {
     return;
@@ -414,7 +460,8 @@ oilForm.addEventListener('submit', (event) => {
     stock,
     boxVolumeLiters: saleType === 'box' ? boxVolumeLiters : 0,
     buyPrice,
-    sellPrice
+    sellPrice,
+    currency
   });
 
   saveState();
@@ -465,6 +512,7 @@ saleForm.addEventListener('submit', (event) => {
     totalPurchase,
     profit,
     paid,
+    currency: getCurrency(selectedOil.currency),
     saleType: selectedOil.saleType,
     boxVolumeLiters: selectedOil.boxVolumeLiters || 0,
     date: saleDate
@@ -477,6 +525,7 @@ saleForm.addEventListener('submit', (event) => {
       id: crypto.randomUUID(),
       customerName,
       amount: paid,
+      currency: getCurrency(selectedOil.currency),
       note: `${selectedOil.name} - دفعة أولية`,
       date: saleDate
     });
@@ -494,6 +543,7 @@ paymentForm.addEventListener('submit', (event) => {
 
   const customerName = paymentCustomerSelect.value.trim();
   const amount = Number(paymentAmountInput.value);
+  const currency = getCurrency(paymentCurrencySelect.value);
   const date = paymentDateInput.value || new Date().toISOString().slice(0, 10);
 
   if (!customerName || Number.isNaN(amount) || amount <= 0) {
@@ -504,6 +554,7 @@ paymentForm.addEventListener('submit', (event) => {
     id: crypto.randomUUID(),
     customerName,
     amount,
+    currency,
     note: paymentNoteInput.value.trim() || 'دفعة إضافية',
     date
   });
@@ -523,6 +574,7 @@ function exportTodayReport() {
   const salesSheet = XLSX.utils.json_to_sheet(todaySales.map((sale) => ({
     'اسم الزبون': sale.customerName,
     'نوع الزيت': sale.oilName,
+    'العملة': currencyName(sale.currency),
     'الكمية': sale.quantity,
     'سعر البيع': sale.unitPrice,
     'إجمالي البيع': sale.totalSale,
@@ -535,15 +587,21 @@ function exportTodayReport() {
   const paymentsSheet = XLSX.utils.json_to_sheet(todayPayments.map((payment) => ({
     'اسم الزبون': payment.customerName,
     'المبلغ': payment.amount,
+    'العملة': currencyName(payment.currency),
     'ملاحظات': payment.note,
     'التاريخ': dateString(payment.date)
   })));
 
+  const salesTotals = sumByCurrency(todaySales, 'totalSale');
+  const paymentTotals = sumByCurrency(todayPayments, 'amount');
+  const profitTotals = sumByCurrency(todaySales, 'profit');
   const summarySheet = XLSX.utils.json_to_sheet([
-    { 'العنوان': 'تقرير اليوم', 'القيمة': '' },
-    { 'العنوان': 'إجمالي المبيعات', 'القيمة': todaySales.reduce((sum, sale) => sum + Number(sale.totalSale || 0), 0) },
-    { 'العنوان': 'إجمالي المدفوعات', 'القيمة': todayPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0) },
-    { 'العنوان': 'إجمالي الربح', 'القيمة': todaySales.reduce((sum, sale) => sum + Number(sale.profit || 0), 0) }
+    { 'العنوان': 'تقرير اليوم', 'القيمة': '', 'العملة': '' },
+    ...currencies.flatMap((currency) => [
+      { 'العنوان': 'إجمالي المبيعات', 'القيمة': salesTotals[currency], 'العملة': currencyName(currency) },
+      { 'العنوان': 'إجمالي المدفوعات', 'القيمة': paymentTotals[currency], 'العملة': currencyName(currency) },
+      { 'العنوان': 'إجمالي الربح', 'القيمة': profitTotals[currency], 'العملة': currencyName(currency) }
+    ])
   ]);
 
   XLSX.utils.book_append_sheet(wb, salesSheet, 'المبيعات');

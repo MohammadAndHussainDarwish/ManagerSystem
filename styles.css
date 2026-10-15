@@ -138,6 +138,29 @@ h1 {
   font-size: clamp(1.3rem, 1.7vw, 2rem);
 }
 
+.currency-totals {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.currency-totals > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.currency-totals span {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.currency-totals strong {
+  font-size: clamp(1rem, 1.4vw, 1.4rem);
+  text-align: left;
+}
+
 .stat-card.accent {
   background: linear-gradient(135deg, #3a2d7d 0%, #4d3db0 100%);
   color: #ffffff;
@@ -228,6 +251,11 @@ h1 {
   grid-column: 1 / -1;
 }
 
+.currency-note {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
 label {
   color: var(--muted);
   font-size: 0.9rem;
@@ -263,7 +291,7 @@ select:focus {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 440px;
+  min-width: 640px;
 }
 
 thead {
@@ -403,9 +431,23 @@ tbody tr:hover {
 
 .customer-summary {
   display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.currency-summary {
+  display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  margin-bottom: 16px;
+  min-width: 0;
+}
+
+.currency-summary h4 {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-align: center;
 }
 
 .summary-box {
@@ -425,6 +467,7 @@ tbody tr:hover {
 
 .summary-box strong {
   font-size: 0.95rem;
+  overflow-wrap: anywhere;
 }
 
 .customer-footer {
@@ -505,7 +548,4 @@ tbody tr:hover {
     grid-template-columns: 1fr;
   }
 
-  .customer-summary {
-    grid-template-columns: 1fr;
-  }
 }

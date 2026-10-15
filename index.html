@@ -30,19 +30,31 @@
       <section class="stats-grid">
         <div class="stat-card accent">
           <label>إجمالي المبيعات اليوم</label>
-          <strong id="todaySalesTotal">0 ل.س</strong>
+          <div class="currency-totals">
+            <div><span>ليرة سورية</span><strong id="todaySalesSyp">0 ل.س</strong></div>
+            <div><span>دولار أمريكي</span><strong id="todaySalesUsd">0 $</strong></div>
+          </div>
         </div>
         <div class="stat-card success">
           <label>إجمالي الربح اليوم</label>
-          <strong id="todayProfitTotal">0 ل.س</strong>
+          <div class="currency-totals">
+            <div><span>ليرة سورية</span><strong id="todayProfitSyp">0 ل.س</strong></div>
+            <div><span>دولار أمريكي</span><strong id="todayProfitUsd">0 $</strong></div>
+          </div>
         </div>
         <div class="stat-card info">
           <label>المستحقات الحالية</label>
-          <strong id="receivablesTotal">0 ل.س</strong>
+          <div class="currency-totals">
+            <div><span>ليرة سورية</span><strong id="receivablesSyp">0 ل.س</strong></div>
+            <div><span>دولار أمريكي</span><strong id="receivablesUsd">0 $</strong></div>
+          </div>
         </div>
         <div class="stat-card warning">
           <label>إجمالي المدفوعات</label>
-          <strong id="todayPaymentsTotal">0 ل.س</strong>
+          <div class="currency-totals">
+            <div><span>ليرة سورية</span><strong id="paymentsSyp">0 ل.س</strong></div>
+            <div><span>دولار أمريكي</span><strong id="paymentsUsd">0 $</strong></div>
+          </div>
         </div>
       </section>
 
@@ -62,6 +74,13 @@
               <select id="oilSaleType" required>
                 <option value="kilo">يباع بالكيلو</option>
                 <option value="box">يباع بالعلبة المختومة</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>عملة الأسعار</label>
+              <select id="oilCurrency" required>
+                <option value="SYP">ليرة سورية (ل.س)</option>
+                <option value="USD">دولار أمريكي ($)</option>
               </select>
             </div>
             <div class="field">
@@ -88,6 +107,7 @@
               <thead>
                 <tr>
                   <th>الاسم</th>
+                  <th>العملة</th>
                   <th>شراء</th>
                   <th>بيع</th>
                   <th>الربح</th>
@@ -121,7 +141,7 @@
               <input type="number" id="quantity" step="0.1" min="0.1" value="1" required />
             </div>
             <div class="field">
-              <label>المدفوع</label>
+              <label id="salePaidLabel">المدفوع (ل.س)</label>
               <input type="number" id="amountPaid" step="0.01" min="0" value="0" />
             </div>
             <div class="field full-span">
@@ -193,6 +213,14 @@
               <label>المبلغ المدفوع</label>
               <input type="number" id="paymentAmount" step="0.01" min="0" placeholder="0.00" required />
             </div>
+            <div class="field">
+              <label>عملة الدفعة</label>
+              <select id="paymentCurrency" required>
+                <option value="SYP">ليرة سورية (ل.س)</option>
+                <option value="USD">دولار أمريكي ($)</option>
+              </select>
+            </div>
+            <p class="currency-note full-span">يُسجَّل رصيد كل عملة بشكل مستقل، من دون تحويل أو مقاصة بين الدولار والليرة.</p>
             <div class="field full-span">
               <label>ملاحظات</label>
               <input type="text" id="paymentNote" placeholder="مثال: دفعة جزئية" />
