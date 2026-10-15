@@ -24,6 +24,8 @@ A lightweight, Arabic-language web application for managing a metal oil store. T
 
 The application is a static website and does not require a build step or package installation.
 
+> The repository currently contains this README only. Add the application files (`index.html`, `styles.css`, and `script.js`) to the same folder before running the steps below.
+
 1. Make sure `index.html`, `styles.css`, and `script.js` are in the same folder.
 2. Start a local web server from that folder:
 
